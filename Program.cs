@@ -28,6 +28,7 @@ namespace Primer
             }
             var stepSize = (double)1 / (double)k;
             Random random = new Random();
+
             for (int i = 0; i < k; i++)
             {
                 BigInteger a = random.NextBigInteger(2, number - 1);
@@ -43,9 +44,11 @@ namespace Primer
 
         static void Main(string[] args)
         {
-            var saveFolder = System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + "\\";
-            // Check for todo && done files
-
+            var saveFolder = "c:\\Primer\\";
+            Directory.CreateDirectory(saveFolder);
+            var todoFilePath = saveFolder + "PrimerTodo.txt";
+            var doneFilePath = saveFolder + "PrimerDone.txt";
+            var foundFilePath = saveFolder + "PrimerFound.txt";
             var minExponent = 1;
             var maxExponent = 0;
             var maxCoresDefault = Environment.ProcessorCount;
@@ -53,16 +56,17 @@ namespace Primer
             var numberOfFermatTests = 0;
             var range = new List<int>();
             var doneExponents = new ConcurrentBag<int>();
-            if (File.Exists(saveFolder + "todo.txt"))
+            // Check && see if we need to pick up where we left off
+            if (File.Exists(todoFilePath))
             {
                 AnsiConsole.Status()
                     .AutoRefresh(true)
                     .Spinner(Spinner.Known.Default)
                     .Start("Found existing work, parsing...", ctx =>
                     {
-                        if (File.Exists(saveFolder + "done.txt"))
+                        if (File.Exists(doneFilePath))
                         {
-                            using (TextReader tr = new StreamReader(saveFolder + "done.txt"))
+                            using (TextReader tr = new StreamReader(doneFilePath))
                             {
                                 while (tr.Peek() > 0)
                                 {
@@ -74,7 +78,7 @@ namespace Primer
                             }
                         }
 
-                        using (TextReader tr = new StreamReader(saveFolder + "todo.txt"))
+                        using (TextReader tr = new StreamReader(todoFilePath))
                         {
                             while (tr.Peek() > 0)
                             {
@@ -119,21 +123,23 @@ namespace Primer
                     }
                 }
             }
-            Console.WriteLine("Probable Mersenne Prime Numbers:");
+
+            // Clean up memory before we start
             doneExponents.Clear();
             GC.WaitForPendingFinalizers();
             GC.Collect();
+
             var parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = coresToUse,                
             };
-
+            Console.WriteLine("Probable Mersenne Prime Numbers:");
             AnsiConsole.Progress()
             .Columns(new ProgressColumn[]
             {
-                    new TaskDescriptionColumn(),    // Task description
-                    new ProgressBarColumn(),        // Progress bar
-                    new SpinnerColumn(),            // Spinner
+                    new TaskDescriptionColumn(),    
+                    new ProgressBarColumn(),        
+                    new SpinnerColumn(),            
             })
             .AutoClear(true)
             .HideCompleted(true)            
@@ -152,17 +158,18 @@ namespace Primer
                     if (IsFermatProbablePrime(mersenneExponent, subTask, numberOfFermatTests))
                     {
                         AnsiConsole.MarkupLine($"[red]2^{p} - 1 is probable prime![/]");
-                        WriteLineToFile(p.ToString() + "  --  " + mersenneExponent.ToString(), "found.txt");
+                        WriteLineToFile(p.ToString() + "  --  " + mersenneExponent.ToString(), foundFilePath);
                     }
                     subTask.Increment(1);
-                    WriteLineToFile(p.ToString(), "done.txt");
+                    WriteLineToFile(p.ToString(), doneFilePath);
                     mainTask.Increment(totalRangeStep);
                 });
 
-                File.Delete(saveFolder + "todo.txt");
-                File.Delete(saveFolder + "done.txt");
+                File.Delete(todoFilePath);
+                File.Delete(doneFilePath);
             });
-            AnsiConsole.Markup("[bold green]Done! Press a key to finish.[/] ");
+            AnsiConsole.MarkupLine($"[bold green]Done! Results written to: {foundFilePath}[/] ");
+            Console.WriteLine("Press a key to exit");
             Console.ReadKey();
         }
 
