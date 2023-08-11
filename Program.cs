@@ -2,6 +2,7 @@
 using Spectre.Console;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Numerics;
@@ -15,7 +16,7 @@ namespace Primer
     {
         static object fileLock = true;
 
-        static bool IsFermatProbablePrime(BigInteger number, ProgressTask task, int k = 5)
+        static bool IsFermatProbablePrime(BigInteger number, int k = 5)
         {
             if (number <= 1)
             {
@@ -26,7 +27,12 @@ namespace Primer
             {
                 return true;
             }
-            var stepSize = (double)1 / (double)k;
+
+            if (number % 2 == 0)
+            {
+                return false;
+            }
+
             Random random = new Random();
 
             for (int i = 0; i < k; i++)
@@ -34,18 +40,15 @@ namespace Primer
                 BigInteger a = random.NextBigInteger(2, number - 1);
                 if (BigInteger.ModPow(a, number - 1, number) != 1)
                 {
-                    task.Increment(1);
                     return false;
                 }
-                task.Increment(stepSize);
             }
             return true;
         }
 
         static void Main(string[] args)
         {
-            var saveFolder = "c:\\Primer\\";
-            Directory.CreateDirectory(saveFolder);
+            var saveFolder = Environment.CurrentDirectory + "\\";
             var todoFilePath = saveFolder + "PrimerTodo.txt";
             var doneFilePath = saveFolder + "PrimerDone.txt";
             var foundFilePath = saveFolder + "PrimerFound.txt";
@@ -115,7 +118,7 @@ namespace Primer
 
                 range = Enumerable.Range(minExponent, maxExponent - minExponent + 1).ToList();
                 // Save list
-                using (TextWriter tw = new StreamWriter(saveFolder + "todo.txt", false))
+                using (TextWriter tw = new StreamWriter(todoFilePath, false))
                 {
                     foreach (var item in range)
                     {
@@ -151,14 +154,16 @@ namespace Primer
 
                 Parallel.ForEach(range, parallelOptions, p =>
                 {
+                    Stopwatch sw = Stopwatch.StartNew();
                     BigInteger mersenneExponent = BigInteger.Pow(2, p) - 1;
                     var subTask = ctx.AddTask($"Testing 2^{p}-1");
                     subTask.IsIndeterminate = true;
                     subTask.MaxValue = 1;
-                    if (IsFermatProbablePrime(mersenneExponent, subTask, numberOfFermatTests))
+                    if (IsFermatProbablePrime(mersenneExponent, numberOfFermatTests))
                     {
+                        var timeElapsed = sw.Elapsed.ToString(@"dd\.hh\:mm\:ss\.ff");
                         AnsiConsole.MarkupLine($"[red]2^{p} - 1 is probable prime![/]");
-                        WriteLineToFile(p.ToString() + "  --  " + mersenneExponent.ToString(), foundFilePath);
+                        WriteLineToFile($"{p}  --  {mersenneExponent} -- Time to test: {timeElapsed}", foundFilePath);
                     }
                     subTask.Increment(1);
                     WriteLineToFile(p.ToString(), doneFilePath);
