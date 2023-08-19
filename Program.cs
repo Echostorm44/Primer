@@ -178,7 +178,7 @@ namespace Primer
                         var totalRangeStep = (double)1 / (double)range.Count;
                         foreach (var item in range)
                         {
-                            // Per Uncle Bob the exponent must be prime for it to be worth testing so we trim down the list using 
+                            // Per Bob Price, the exponent must be prime for it to be worth testing so we trim down the list using 
                             // Eric Lipperts very efficent method for smaller numbers
                             if (IsPrime(item))
                             {
