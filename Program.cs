@@ -16,6 +16,46 @@ namespace Primer
     {
         static object fileLock = true;
 
+
+        /// <summary>
+        /// Used to check smaller numbers like exponents
+        /// </summary>
+        /// <param name="number"></param>
+        /// <returns></returns>
+        public static bool IsPrime(int number)
+        {
+            if (number == 1)
+            {
+                return false;
+            }
+            if (number == 2 || number == 3 || number == 5)
+            {
+                return true;
+            }
+            if (number % 2 == 0 || number % 3 == 0 || number % 5 == 0)
+            {
+                return false;
+            }
+
+            var boundary = (int)Math.Floor(Math.Sqrt(number));
+
+            // You can do less work by observing that at this point, all primes 
+            // other than 2 and 3 leave a remainder of either 1 or 5 when divided by 6. 
+            // The other possible remainders have been taken care of.
+            int i = 6; // start from 6, since others below have been handled.
+            while (i <= boundary)
+            {
+                if (number % (i + 1) == 0 || number % (i + 5) == 0)
+                {
+                    return false;
+                }
+
+                i += 6;
+            }
+
+            return true;
+        }
+
         static bool IsFermatProbablePrime(BigInteger number, int k = 5)
         {
             if (number <= 1)
@@ -117,13 +157,38 @@ namespace Primer
                 while ((minExponent < 2) || (maxExponent < minExponent) || (coresToUse <= 0) || (coresToUse > maxCoresDefault) || (numberOfFermatTests <= 0));
 
                 range = Enumerable.Range(minExponent, maxExponent - minExponent + 1).ToList();
+                var trimmedRange = new List<int>();
                 // Save list
+
                 using (TextWriter tw = new StreamWriter(todoFilePath, false))
                 {
-                    foreach (var item in range)
+                    AnsiConsole.Progress()
+                    .Columns(new ProgressColumn[]
                     {
-                        tw.WriteLine(item);
-                    }
+                            new TaskDescriptionColumn(),
+                            new ProgressBarColumn(),
+                            new SpinnerColumn(),
+                    })
+                    .AutoClear(false)
+                    .HideCompleted(false)
+                    .Start(ctx =>
+                    {
+                        var mainTask = ctx.AddTask("[green]Testing Exponents...[/]");
+                        mainTask.MaxValue = 1;
+                        var totalRangeStep = (double)1 / (double)range.Count;
+                        foreach (var item in range)
+                        {
+                            // Per Uncle Bob the exponent must be prime for it to be worth testing so we trim down the list using 
+                            // Eric Lipperts very efficent method for smaller numbers
+                            if (IsPrime(item))
+                            {
+                                tw.WriteLine(item);
+                                trimmedRange.Add(item);
+                            }
+                            mainTask.Increment(totalRangeStep);
+                        }
+                        range = trimmedRange;
+                    });
                 }
             }
 
